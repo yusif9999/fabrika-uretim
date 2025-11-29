@@ -157,24 +157,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const dataManager = {
     // Verileri API'den yükle
     load: async () => {
-        // Varsayılan boş yapı
         app.data = { fabrikalar: [], uretimler: [], giderler: [], odemeler: [], vardiyalar: [], personel: [], pozisyonlar: [] };
         
-        // Eğer giriş yapılmamışsa veri çekmeye çalışma
         if (!localStorage.getItem('userToken')) return;
 
         try {
-            // 1. FABRİKALARI ÇEK
+            // 1. Fabrikaları Çek
             const resFabrika = await fetch('/api/fabrikalar');
             if (resFabrika.ok) {
                 const fabrikalar = await resFabrika.json();
-                // Frontend yapısına uydur (MongoDB _id'sini id olarak kullanmak gerekebilir)
                 app.data.fabrikalar = fabrikalar.map(f => ({ ...f, id: f._id }));
             }
 
-            // ... Diğer veriler (Personel, Üretim vb.) buraya eklenecek ...
-            
-            // Veri yüklendiğinde ekranı güncelle
+            // 2. Personelleri Çek (BURASI EKSİKTİ)
+            const resPersonel = await fetch('/api/personel');
+            if (resPersonel.ok) {
+                const personelList = await resPersonel.json();
+                // MongoDB _id'sini bizim sistemdeki id'ye çeviriyoruz
+                app.data.personel = personelList.map(p => ({ ...p, id: p._id }));
+            }
+
+            // Ekranı güncelle
             if (app.currentUser) {
                 renderer.updateAll();
             }
@@ -712,15 +715,19 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             const data = await res.json();
-            
             if(!res.ok) throw new Error(data.message);
 
-            // Başarılı olursa token'ı kaydet
-            app.currentUser = data; // Backend'den gelen kullanıcı verisi
-            localStorage.setItem('userToken', data.token); // Token'ı sakla
+            // Token kaydet
+            app.currentUser = data; 
+            localStorage.setItem('userToken', data.token);
             
             alert('Yönetici oluşturuldu!');
-            main.runAfterLogin(); // Panele giriş yap
+
+            // EKRANI DEĞİŞTİR (BURASI EKSİKTİ)
+            app.dom.setupContainer.style.display = 'none';
+            app.dom.appContainer.style.display = 'flex';
+            
+            main.runAfterLogin();
 
         } catch (err) {
             document.getElementById('setup-error').textContent = err.message;
@@ -1646,17 +1653,61 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     // UYGULAMAYI BAŞLAT
-    main.boot();
-    // Mobil menü için toggle butonu: sidebar'ı aç/kapat
-    const sidebarToggleBtn = document.getElementById('sidebar-toggle');
-    if (sidebarToggleBtn) {
-        sidebarToggleBtn.addEventListener('click', () => {
-            const sidebarEl = document.getElementById('sidebar');
-            if (sidebarEl) {
-                sidebarEl.classList.toggle('active');
+    // public/js/script.js dosyasının en altındaki main.boot fonksiyonunu bununla değiştir:
+
+    main.boot = async () => {
+        // 1. Verileri Yükle
+        await dataManager.load();
+        
+        // Tüm ekranları gizle
+        main.hideAllAuth();
+
+        // 2. Yönetici Var mı Kontrol Et (DÜZELTİLEN KISIM)
+        // Artık 'Pozisyon Adı'na değil, direkt veritabanındaki 'rol' bilgisine bakıyoruz.
+        let adminExists = false;
+        if (app.data.personel && app.data.personel.length > 0) {
+            adminExists = app.data.personel.some(p => p.rol === 'admin');
+        }
+
+        // 3. Duruma Göre Ekranı Aç
+        if (!adminExists) {
+            // Hiç yönetici yoksa -> KURULUM EKRANI
+            console.log("Sistemde yönetici yok, kurulum ekranı açılıyor...");
+            app.dom.setupContainer.style.display = 'block';
+            
+            // Event listener ekle (Eğer daha önce eklenmediyse)
+            if (app.dom.setupForm) {
+                // Önce eski dinleyicileri temizlemek için klonla (opsiyonel ama güvenli)
+                const newForm = app.dom.setupForm.cloneNode(true);
+                app.dom.setupForm.parentNode.replaceChild(newForm, app.dom.setupForm);
+                app.dom.setupForm = newForm;
+                
+                app.dom.setupForm.addEventListener('submit', actions.setup);
             }
-        });
-    }
+        } else {
+            // Yönetici varsa -> GİRİŞ SEÇENEKLERİ
+            console.log("Yönetici bulundu, giriş ekranı açılıyor...");
+            app.dom.loginChoiceContainer.style.display = 'block';
+            
+            // Butonları aktifleştir
+            app.dom.btnAdminLoginChoice.onclick = () => {
+                main.hideAllAuth();
+                app.dom.adminLoginContainer.style.display = 'block';
+            };
+            app.dom.btnPersonelLoginChoice.onclick = () => {
+                main.hideAllAuth();
+                app.dom.personelLoginContainer.style.display = 'block';
+            };
+
+            // Login formlarını dinle
+            if (app.dom.adminLoginForm) {
+                app.dom.adminLoginForm.onsubmit = actions.adminLogin;
+            }
+            if (app.dom.personelLoginForm) {
+                app.dom.personelLoginForm.onsubmit = actions.personelLogin;
+            }
+        }
+    };
 
 });
 // JAVASCRIPT KODLARI BİTİŞ
