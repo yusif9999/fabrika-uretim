@@ -1,0 +1,407 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/style.css">
+    <title>FABRIKA | Yönetim Paneli v5.9 (Net-Brüt Hesaplama + Vardiya İyileştirmeleri)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Firebase App (the core Firebase SDK) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <!-- Add Firebase products that you want to use -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <style>
+        
+    </style>
+</head>
+<body>
+
+    <!-- Mobil cihazlarda yan menüyü açıp kapatmak için buton -->
+    <button id="sidebar-toggle" aria-label="Menüyü Aç/Kapat">
+        <!-- Hamburger ikon -->
+        <svg viewBox="0 0 24 24"><path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z"/></svg>
+    </button>
+
+
+    <div id="setup-container" class="auth-container">
+        <h1>Yönetim Paneline Hoş Geldiniz</h1>
+        <p>İlk kez kullanıyorsanız, lütfen bir yönetici kullanıcı adı ve şifresi oluşturun.</p>
+        <form id="setup-form">
+            <div class="input-group">
+                <label for="setup-username">Yönetici Kullanıcı Adı</label>
+                <input type="text" id="setup-username" required>
+            </div>
+            <div class="input-group">
+                <label for="setup-pass">Yeni Yönetici Şifresi (En az 4 karakter)</label>
+                <input type="password" id="setup-pass" required>
+            </div>
+            <div class="input-group">
+                <label for="setup-pass-onay">Yeni Şifreyi Onayla</label>
+                <input type="password" id="setup-pass-onay" required>
+            </div>
+            <div id="setup-error" class="auth-message"></div>
+            <button type="submit" class="btn btn-primary btn-full">Yönetici Hesabını Oluştur</button>
+        </form>
+    </div>
+
+    <div id="login-choice-container" class="auth-container">
+        <h1>Yönetim Paneli</h1>
+        <p>Lütfen giriş yapmak istediğiniz panel türünü seçin.</p>
+        <button id="btn-admin-login-choice" class="btn btn-primary btn-full" style="margin-bottom: 15px;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M12 1L9 5h6l-3-4zM6 9l-4 3 4 3V9zm12 0v6l4-3-4-3zm-9 4c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM4 17.01L7 14h10l3 3.01H4z"/></svg>
+            YÖNETİCİ GİRİŞİ
+        </button>
+        <button id="btn-personel-login-choice" class="btn btn-secondary btn-full">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            PERSONEL GİRİŞİ
+        </button>
+    </div>
+
+    <div id="admin-login-container" class="auth-container">
+        <h1>Yönetici Girişi</h1>
+        <p>Lütfen yönetici kullanıcı adınızı ve şifrenizi girin.</p>
+        <form id="admin-login-form">
+            <div class="input-group">
+                <label for="admin-username">Kullanıcı Adı</label>
+                <input type="text" id="admin-username" required>
+            </div>
+            <div class="input-group">
+                <label for="admin-password">Şifre</label>
+                <input type="password" id="admin-password" required>
+            </div>
+            <div id="admin-login-error" class="auth-message"></div>
+            <button type="submit" class="btn btn-primary btn-full">Giriş Yap</button>
+            <button type="button" class="btn btn-secondary btn-full" style="margin-top: 15px;" onclick="main.showLoginChoice()">Geri</button>
+        </form>
+    </div>
+
+    <div id="personel-login-container" class="auth-container">
+        <h1>Personel Girişi</h1>
+        <p>Lütfen size atanan kullanıcı adı ve şifre ile giriş yapın.</p>
+        <form id="personel-login-form">
+            <div class="input-group">
+                <label for="personel-username">Kullanıcı Adı</label>
+                <input type="text" id="personel-username" required>
+            </div>
+            <div class="input-group">
+                <label for="personel-password">Şifre</label>
+                <input type="password" id="personel-password" required>
+            </div>
+            <div id="personel-login-error" class="auth-message"></div>
+            <button type="submit" class="btn btn-primary btn-full">Giriş Yap</button>
+            <button type="button" class="btn btn-secondary btn-full" style="margin-top: 15px;" onclick="main.showLoginChoice()">Geri</button>
+        </form>
+    </div>
+    <div id="app-container">
+        <aside id="sidebar">
+            <div class="logo">YÖNETİM<span>PANELİ</span></div>
+            <nav>
+                <ul>
+                    <li data-role="admin"><a href="#" class="nav-link" data-page="dashboard"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>Ana Panel</a></li>
+                    <li data-role="admin isci"><a href="#" class="nav-link" data-page="vardiya-yonetimi"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.25 14.16L11 13.32V7h1.5v5.5l4.5 2.66-.75 1.3z"/></svg>Vardiya Yönetimi</a></li>
+                    <li data-role="admin isci"><a href="#" class="nav-link" data-page="uretim-ekle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18zM18 14H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>Üretim Ekle</a></li>
+                    <li data-role="admin"><a href="#" class="nav-link" data-page="personel-yonetimi"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V18h14v-1.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V18h6v-1.5c0-2.33-4.67-3.5-7-3.5z"/></svg>Personel Yönetimi</a></li>
+                    <li data-role="admin"><a href="#" class="nav-link" data-page="giderler"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm-1 14H5c-.55 0-1-.45-1-1v-5h16v5c0 .55-.45 1-1 1zM20 8H4V6h16v2z"/></svg>Giderler</a></li>
+                    <li data-role="admin"><a href="#" class="nav-link" data-page="fabrikalar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>Fabrika Hesapları</a></li>
+                    <li data-role="admin"><a href="#" class="nav-link" data-page="raporlar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>Raporlar</a></li>
+                    <li data-role="admin"><a href="#" class="nav-link" data-page="ayarlar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19.4 12.99l-2.07-1.22c.04-.3.07-.61.07-.92s-.03-.62-.07-.92l2.07-1.22c.32-.19.44-.59.24-.91l-1-1.73c-.2-.32-.6-.44-.91-.24l-2.07 1.22c-.44-.33-.92-.6-1.44-.79l-.3-2.28c-.05-.38-.38-.66-.77-.66h-2c-.38 0-.72.28-.77.66l-.3 2.28c-.52.19-1 .46-1.44-.79l-2.07-1.22c-.32-.19-.71-.08-.91.24l-1 1.73c-.2.32-.08.71.24.91l2.07 1.22c-.04.3-.07.61-.07.92s.03.62.07.92l-2.07 1.22c-.32.19-.44.59-.24.91l1 1.73c.2.32.6.44.91.24l2.07-1.22c.44.33.92.6 1.44.79l.3 2.28c.05.38.38.66.77.66h2c.38 0-.72.28-.77-.66l-.3-2.28c.52-.19 1-.46 1.44-.79l2.07 1.22c.32.19.71.08.91-.24l1-1.73c.2-.32.08-.71-.24-.91zM12 15c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/></svg>Ayarlar</a></li>
+                    <!-- Yeni: Personel Durumu (Yoklama) -->
+                    <li data-role="admin"><a href="#" class="nav-link" data-page="personel-durumu"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6 3H4v18h2V3zm14 0h-2v18h2V3zM11 7h2v10h-2V7z"/></svg>Personel Durumu</a></li>
+                </ul>
+            </nav>
+            <div id="sidebar-vardiya-durumu"></div>
+            <button id="logout-btn" class="btn btn-danger">Çıkış Yap</button>
+        </aside>
+
+        <main id="main-content">
+            <header>
+                <h1 id="page-title">Ana Panel</h1>
+                <div id="kullanici-bilgisi"></div>
+            </header>
+            
+            <div id="dashboard" class="page active">
+                <div class="card-container">
+                    <div class="card"><h3>Toplam Üretim Değeri</h3><div class="value" id="dashboard-gelir">0 ₺</div></div>
+                    <div class="card"><h3>Toplam Giderler</h3><div class="value" id="dashboard-gider">0 ₺</div></div>
+                    <div class="card"><h3>Net Kâr (Tahsilata Göre)</h3><div class="value" id="dashboard-kar">0 ₺</div></div>
+                    <div class="card"><h3>Kalan Toplam Alacak</h3><div class="value"id="dashboard-alacak">0 ₺</div></div>
+                </div>
+                <div class="content-box"><h2>Son 6 Aylık Nakit Akışı</h2><canvas id="nakitAkisChart" height="120"></canvas></div>
+            </div>
+
+            <div id="vardiya-yonetimi" class="page">
+                <div id="aktif-vardiya-container" class="content-box" style="display: none;">
+                    <h2>Aktif Vardiya</h2>
+                    <div id="aktif-vardiya-detaylari"></div>
+                    <!-- Yeni: Personel Ekle/Çıkar Butonu -->
+                    <button id="vardiya-personel-yonet-btn" class="btn btn-info btn-full" style="margin-bottom: 15px;">Personel Ekle/Çıkar</button>
+                    <button id="vardiya-devret-modal-btn" class="btn btn-warning btn-full" style="margin-bottom: 15px;">VARDİYAYI DEVRET (Başka Birine)</button>
+                    <button id="vardiya-kapat-btn" class="btn btn-danger btn-full">VARDİYAYI KAPAT (Günü Sonlandır)</button>
+                </div>
+                <div id="yeni-vardiya-form-container" class="content-box" style="display: none;">
+                    <h2>Yeni Vardiya Başlat</h2>
+                    <form id="yeni-vardiya-form">
+                        <div class="form-grid" style="grid-template-columns: 2fr 1fr; align-items: end;">
+                            <div class="input-group">
+                                <label for="vardiya-personel-select">Vardiyayı Başlatan Personel(ler)</label>
+                                <!-- Çoklu seçim: birden fazla personel seçilebilir -->
+                                <select id="vardiya-personel-select" multiple size="6" required>
+                                    <option value="" disabled>Personel Seçin...</option>
+                                </select>
+                                <small style="font-size: 12px; color: #7f8c8d;">Birden fazla personel seçmek için Ctrl veya Shift tuşlarını kullanın.</small>
+                            </div>
+                            <div class="input-group">
+                                <button type="submit" class="btn btn-success btn-full">VARDİYAYI BAŞLAT</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="content-box">
+                    <h2>Vardiya Geçmişi (Puantaj)</h2>
+                    <div id="vardiya-gecmisi-container"></div>
+                </div>
+            </div>
+            <div id="personel-yonetimi" class="page">
+                <div class="content-box">
+                    <h2>Personel İşlem Formu</h2>
+                    <form id="personel-islem-form">
+                        
+                        <div class="input-group full-width" style="border-bottom: 2px solid #eee; padding-bottom: 25px;">
+                            <label for="personel-islem-select">İşlem Tipi</label>
+                            <select id="personel-islem-select">
+                                <option value="new" selected>-- Yeni Personel Oluştur --</option>
+                            </select>
+                            <p style="font-size: 14px; color: #7f8c8d; margin-top: 10px;">
+                                Yeni personel eklemek için bu seçenekte bırakın veya mevcut bir personeli güncellemek için listeden seçin.
+                            </p>
+                        </div>
+                        
+                        <h3 style="margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">Personel Bilgileri</h3>
+                        <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr;">
+                            <div class="input-group"><label for="personel-ad-soyad">İsim Soyisim (Zorunlu)</label><input type="text" id="personel-ad-soyad" placeholder="Örn: Mehmet Kaya" required></div>
+                            <div class="input-group"><label for="personel-telefon">Telefon</label><input type="tel" id="personel-telefon" placeholder="Örn: 0555 123 4567"></div>
+                            <div class="input-group"><label for="personel-ise-alim-tarihi">İşe Alınma Tarihi</label><input type="date" id="personel-ise-alim-tarihi"></div>
+                        </div>
+                        <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr;">
+                            <div class="input-group"><label for="personel-pozisyon-select">Pozisyon</label><select id="personel-pozisyon-select" required><option value="" disabled selected>Pozisyon Seçin...</option></select></div>
+                             <div class="input-group">
+                                <label for="personel-net-maas" style="color: var(--success-color);">Net Maaş (Ele Geçen)</label>
+                                <input type="number" step="0.01" id="personel-net-maas" placeholder="Örn: 25000" style="border-color: var(--success-color);">
+                            </div>
+                            <div class="input-group">
+                                <label for="personel-brut-maas" style="color: var(--info-color);">Brüt Maaş (Resmi)</label>
+                                <input type="number" step="0.01" id="personel-brut-maas" placeholder="Otomatik hesaplanır">
+                            </div>
+                            <div class="input-group">
+                                <label for="personel-maas-tipi">Maaş Tipi</label>
+                                <select id="personel-maas-tipi">
+                                    <option value="Günlük">Günlük</option>
+                                    <option value="Aylık">Aylık</option>
+                                    <option value="Yarım Ay">Yarım Ay</option>
+                                    <option value="Avans">Avans</option>
+                                    <option value="Prim">Prim Usulü</option> </select>
+                            </div>
+                            <div class="input-group"><label for="personel-durum">Durum</label><select id="personel-durum"><option value="Aktif" selected>Aktif</option><option value="İzinde">İzinde</option><option value="Ayrıldı">İşten Ayrıldı</option></select></div>
+                        </div>
+
+                        
+                        <h3 style="margin-top: 20px; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">Yasal Durum (SGK)</h3>
+                        <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
+                             <div class="input-group">
+                                <label for="personel-sgk-durumu">SGK Durumu</label>
+                                <select id="personel-sgk-durumu">
+                                    <option value="Yok">Sigortasız</option>
+                                    <option value="Var">Sigortalı</option>
+                                </select>
+                            </div>
+                            <div class="input-group" id="personel-sgk-tutar-group" style="display:none;">
+                                <label for="personel-sgk-tutar">Aylık SGK Maliyeti (İşveren Payı Dahil)</label>
+                                <input type="number" step="0.01" id="personel-sgk-tutar" placeholder="Örn: 5500">
+                                <small style="color: #7f8c8d; font-size: 12px;">Ödeme yaparken bu tutarı Giderlere eklemek isteyip istemediğinizi soracağım.</small>
+                            </div>
+                        </div>
+
+                        <h3 style="margin-top: 20px; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">Panel Giriş Bilgileri (Opsiyonel)</h3>
+                        <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
+                            <div class="input-group">
+                                <label for="personel-kullanici-adi">Panel Kullanıcı Adı</label>
+                                <input type="text" id="personel-kullanici-adi" placeholder="Bu personele özel kullanıcı adı (örn: mehmet.kaya)">
+                            </div>
+                             <div class="input-group">
+                                <label for="personel-sifre">Panel Şifresi</label>
+                                <input type="password" id="personel-sifre" placeholder="Yeni şifre (en az 4 karakter)">
+                            </div>
+                        </div>
+
+                        <div style="text-align: right; margin-top: 10px;">
+                            <button type="submit" id="personel-form-submit-btn" class="btn btn-success">Personeli Kaydet</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="content-box">
+                    <h2>Kayıtlı Personel Listesi</h2>
+                    <div id="personel-listesi-container"></div>
+                </div>
+            </div>
+            
+            <div id="uretim-ekle" class="page">
+                <div class="content-box">
+                    <h2>Yeni Üretim Kalemi Ekle</h2>
+                    <form id="uretim-ekle-form">
+                        <div class="form-grid" style="grid-template-columns: 2fr 1fr;"><div class="input-group"><label for="uretim-fabrika">Fabrika Seçin</label><select id="uretim-fabrika" required></select></div><div class="input-group"><label for="uretim-tarih">Tarih</label><input type="date" id="uretim-tarih" required></div></div>
+                        <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr 1fr; align-items: flex-end;">
+                            <div class="input-group"><label for="uretim-aciklama">Ürün / Hizmet Açıklaması</label><input type="text" id="uretim-aciklama" placeholder="Örn: Standart Öğle Yemeği" required></div>
+                            <div class="input-group"><label for="uretim-adet">Adet</label><input type="number" id="uretim-adet" placeholder="Örn: 150" required></div>
+                            <div class="input-group"><label for="uretim-birim-fiyat">Birim Fiyat (₺)</label><input type="number" step="0.01" id="uretim-birim-fiyat" placeholder="Örn: 85.50" required></div>
+                            <div class="input-group"><label for="uretim-toplam-tutar">Toplam Tutar</label><input type="text" id="uretim-toplam-tutar" disabled></div>
+                        </div>
+                        <div class="full-width" style="text-align: right;"><button type="submit" id="listeye-ekle-btn" class="btn btn-primary">Listeye Ekle</button></div>
+                    </form>
+                </div>
+                <div class="content-box">
+                    <h2>Kaydedilecek Üretimler Listesi</h2>
+                    <div id="kayit-listesi-container"></div>
+                    <div id="kayit-listesi-genel-toplam">Genel Toplam: 0,00 ₺</div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 20px;"><button id="listeyi-temizle-btn" class="btn btn-danger">Listeyi Temizle</button><button id="tumunu-kaydet-btn" class="btn btn-success">Listeyi Onayla ve Tümünü Kaydet</button></div>
+                </div>
+                <div class="content-box">
+                    <h2>Son Kayıtlar</h2>
+                    <div id="son-uretimler-container"></div>
+                </div>
+            </div>
+            
+            <div id="giderler" class="page">
+                <div class="content-box">
+                    <h2>Yeni Gider Ekle</h2>
+                    <form id="gider-form">
+                        <div class="form-grid">
+                            <div class="input-group"><label for="gider-tip">Gider Tipi</label><select id="gider-tip" required><option value="" disabled selected>Tip seçin...</option><option value="fabrika">Fabrika Gideri</option><option value="diger">Diğer Gider</option></select></div>
+                            <div class="input-group"><label for="gider-aciklama">Gider Başlığı (Kategori)</label><input type="text" id="gider-aciklama" placeholder="Örn: Mutfak Malzemeleri" required></div>
+                            <div class="input-group full-width"><label for="gider-detay">Geniş Açıklama (Opsiyonel)</label><textarea id="gider-detay" rows="3" placeholder="Giderle ilgili detayları buraya yazabilirsiniz..."></textarea></div>
+                            <div class="input-group"><label for="gider-tutar">Tutar (₺)</label><input type="number" step="0.01" id="gider-tutar" required></div>
+                            <div class="input-group"><label for="gider-tarih">Tarih</label><input type="date" id="gider-tarih" required></div>
+                            <div class="input-group" style="align-self: end;"><button type="submit" class="btn btn-success">Gideri Kaydet</button></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="content-box">
+                    <h2>Gider Listesi</h2>
+                    <button id="gider-csv-indir" class="btn btn-primary" style="margin-bottom: 20px;">Gider Raporu (CSV) İndir</button>
+                    <div id="gider-tablo-container"></div>
+                </div>
+            </div>
+            
+            <div id="fabrikalar" class="page">
+                <div class="content-box">
+                    <h2>Yeni Fabrika Ekle</h2>
+                    <form id="fabrika-form"><div class="form-grid" style="grid-template-columns: 2fr 1fr;"><div class="input-group"><label for="fabrika-adi">Fabrika Adı</label><input type="text" id="fabrika-adi" placeholder="Örn: Büyük Anadolu Tekstil" required></div><div class="input-group" style="align-self: end;"><button type="submit" class="btn btn-success">Fabrikayı Kaydet</button></div></div></form>
+                </div>
+                <div class="content-box">
+                    <h2>Fabrika Hesap Özetleri</h2>
+                    <div id="fabrika-hesap-tablo-container"></div>
+                </div>
+                <div class="content-box danger-zone">
+                    <h2>Tehlikeli Alan: Fabrika Silme</h2>
+                    <p>Bir fabrikayı silmek, o fabrikaya ait **TÜM** üretim ve ödeme kayıtlarını kalıcı olarak yok edecektir. Bu işlem geri alınamaz. Sadece hesabını (kayıtlarını) temizlemek istiyorsanız, yukarıdaki "Hesabı Sıfırla" butonunu kullanın.</p>
+                    <form id="fabrika-sil-form">
+                        <div class="form-grid" style="grid-template-columns: 3fr 1fr; align-items: end;">
+                            <div class="input-group"><label for="fabrika-sil-select">Silinecek Fabrikayı Seçin</label><select id="fabrika-sil-select" required><option value="" disabled selected>...Bir fabrika seçin...</option></select></div>
+                            <div class="input-group"><button type="submit" class="btn btn-danger btn-full">Seçili Fabrikayı Sil</button></div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div id="raporlar" class="page">
+                <div class="card-container" id="rapor-ozet-container" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                    <div class="card"><h3>Toplam Üretim Değeri</h3><div class="value" id="rapor-gelir">0 ₺</div></div>
+                    <div class="card"><h3>Toplam Giderler</h3><div class="value" id="rapor-gider">0 ₺</div></div>
+                    <div class="card"><h3>Net Kâr (Tahsilata Göre)</h3><div class="value" id="rapor-kar">0 ₺</div></div>
+                    <div class="card"><h3>Kalan Toplam Alacak</h3><div class="value" id="rapor-alacak">0 ₺</div></div>
+                </div>
+                <div class="content-box">
+                    <h2>Genel Raporlama</h2>
+                    <p style="margin-bottom:20px;">Tüm üretim (gelir kalemi) ve gider kayıtlarınızı içeren detaylı bir CSV dosyası indirin. Rapor sonunda Net Kâr ve Kalan Alacak özetini göreceksiniz.</p>
+                    <button id="genel-csv-indir" class="btn btn-primary">Genel CSV Raporu İndir</button>
+                </div>
+            </div>
+
+            <div id="ayarlar" class="page">
+                <div class="content-box">
+                    <h2>Güvenlik Ayarları</h2>
+                    <p style="margin-bottom: 25px;">**Yönetici** (Admin) Ana Şifrenizi buradan güvenli bir şekilde değiştirebilirsiniz.</p>
+                    <form id="sifre-degistir-form">
+                        <div class="input-group"><label for="mevcut-sifre">Mevcut Yönetici Şifresi</label><input type="password" id="mevcut-sifre" required></div>
+                        <div class="input-group"><label for="yeni-sifre">Yeni Yönetici Şifresi (En az 4 karakter)</label><input type="password" id="yeni-sifre" required></div>
+                        <div class="input-group"><label for="yeni-sifre-onay">Yeni Yönetici Şifreyi Onayla</label><input type="password" id="yeni-sifre-onay" required></div>
+                        <div id="sifre-degistir-sonuc" class="auth-message" style="height: auto;"></div>
+                        <button type="submit" class="btn btn-primary">Şifreyi Güncelle</button>
+                    </form>
+                </div>
+
+                <div class="content-box">
+                    <h2>İK Ayarları: Pozisyon Yönetimi</h2>
+                    <p style="margin-bottom: 20px;">"Personel Yönetimi" sayfasında görünecek pozisyon tanımlamalarını buradan yapabilirsiniz.</p>
+                    <form id="pozisyon-ekle-form">
+                        <div class="form-grid" style="grid-template-columns: 3fr 1fr; align-items: end;">
+                            <div class="input-group"><label for="pozisyon-adi">Pozisyon Adı</label><input type="text" id="pozisyon-adi" placeholder="Örn: Aşçı, Şoför, Garson" required></div>
+                            <div class="input-group"><button type="submit" class="btn btn-success btn-full">Pozisyon Ekle</button></div>
+                        </div>
+                    </form>
+                    <h3 style="margin-top: 30px;">Mevcut Pozisyonlar</h3>
+                    <div id="pozisyon-listesi-container"></div>
+                </div>
+            </div>
+
+            <!-- Yeni: Personel Durumu Sayfası -->
+            <div id="personel-durumu" class="page">
+                <div class="content-box">
+                    <h2>Personel Durumu (Günlük Yoklama)</h2>
+                    <p style="margin-bottom:20px;">Personellerin işe gelip gelmediğini kontrol etmek için tabloyu kullanabilirsiniz. ✔ işaretli günler çalıştığı, × işaretli günler çalışmadığı, turuncu <strong>İzin</strong> hücreleri planlı haftalık izinleri, kırmızı <strong>İzin</strong> hücreleri ise devamsızlık/mazeretli izin günlerini gösterir.</p>
+                    <div id="personel-durumu-container" style="overflow-x:auto;"></div>
+                    <!-- Özet alanı: Çalışma günleri toplamlarını gösterecek -->
+                    <div id="personel-durumu-summary-container"></div>
+
+                    <!-- Haftalık izin planlama: kullanıcı her hafta farklı bir izin günü seçebilsin -->
+                    <div id="izin-plan-section" style="margin-top: 30px;">
+                        <h3>Haftalık İzin Planlama</h3>
+                        <form id="izin-plan-form">
+                            <div class="form-grid" style="grid-template-columns: 2fr 2fr 1fr; align-items: end;">
+                                <div class="input-group">
+                                    <label for="izin-personel-select">Personel</label>
+                                    <select id="izin-personel-select" required>
+                                        <option value="" disabled selected>Personel Seçin...</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label for="izin-tarih">İzin Tarihi</label>
+                                    <input type="date" id="izin-tarih" required>
+                                </div>
+                                <div class="input-group">
+                                    <button type="submit" class="btn btn-warning">İzin Gününü Ekle</button>
+                                </div>
+                            </div>
+                            <p style="font-size: 12px; color: #7f8c8d; margin-top: 10px;">Her hafta farklı izin günlerini burada seçebilirsiniz. Bu işlem yalnızca seçilen tarih için izin kaydı oluşturur.</p>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <div id="modal-container">
+        <div class="modal-content" id="modal-content-dynamic">
+            <div class="modal-header">
+                <h2 id="modal-title"></h2>
+                <button class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body-dynamic">
+            </div>
+        </div>
+    </div>
+    <script src="js/script.js"></script>
+
+</body>
+</html>
